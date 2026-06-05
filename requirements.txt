@@ -1,0 +1,10 @@
+openai
+numpy
+pandas
+python-dotenv
+tqdm
+fuzzywuzzy
+python-Levenshtein
+chromadb
+sentence_transformers
+pillow
