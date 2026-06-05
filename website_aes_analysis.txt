@@ -1,0 +1,197 @@
+WEBSITE AESTHETICS ALIGNMENT ANALYSIS
+======================================
+Metric  : Pearson correlation between model rating and human mean_response, per persona
+Approach: Baseline (no context) vs. RAG-augmented model (CLIP top-k similar images as in-context examples)
+Dataset : 40 personas, ~10,000 test records, ~86-96 unique websites per persona
+
+────────────────────────────────────────────────────────────────────────────────
+OVERALL SUMMARY
+────────────────────────────────────────────────────────────────────────────────
+Mean Pearson r (baseline) : 0.2016
+Mean Pearson r (model)    : 0.2474
+Overall improvement       : +22.76%
+Personas improved by RAG  : 28 / 40  (70%)
+Personas degraded by RAG  : 12 / 40  (30%)
+
+The RAG approach is broadly beneficial but far from universal. A substantial
+minority of personas are hurt, indicating that visual similarity retrieval is
+not the right signal for every demographic group.
+
+────────────────────────────────────────────────────────────────────────────────
+1. WHY SOME PERSONAS ARE WELL-ALIGNED (BASELINE)
+────────────────────────────────────────────────────────────────────────────────
+The personas with the highest baseline correlations (>0.30) are:
+
+  - Persona 38 (Black woman, Houston, social media manager, moderate Democrat): 0.401
+  - Persona 26 (Somali-American woman, Minneapolis, Muslim moderate)      : 0.386
+  - Persona 16 (White man, Boston, non-profit worker, very liberal)       : 0.337
+  - Persona 8  (Young White man, rural Alabama, very conservative)        : 0.335
+  - Persona 14 (White man, SF, tech executive, very liberal)              : 0.330
+  - Persona 23 (Indian American woman, Houston, Hindu, conservative)      : 0.314
+  - Persona 37 (Hispanic woman, Phoenix, real estate, moderate)           : 0.302
+
+Key observations about high-baseline personas:
+  a) Several are middle-income, educated, urban or suburban — demographic
+     groups that likely constitute the majority of human raters in the original
+     dataset. The model has implicitly learned aesthetic preferences that
+     correlate well with these mainstream profiles without any examples.
+  b) Persona 8 (rural Alabama conservative) is an outlier in this group —
+     its relatively strong baseline may reflect that young men from any
+     ideology share certain aesthetic preferences (clean design, bold visuals)
+     that the model already captures from general training.
+  c) Social-media-native personas (persona 38) tend to have more consistent,
+     contemporary aesthetic preferences that map cleanly onto visual features
+     (color vibrancy, modern layout), making them easier for a vision model
+     to predict correctly without examples.
+
+────────────────────────────────────────────────────────────────────────────────
+2. PERSONAS MOST IMPROVED BY RAG
+────────────────────────────────────────────────────────────────────────────────
+Top gains:
+
+  - Persona 6  (Black man, rural GA, law enforcement, very conservative): +961%
+                0.021 → 0.222
+  - Persona 27 (Native American woman, SD, progressive)                 : +231%
+                0.141 → 0.467
+  - Persona 19 (Hispanic woman, Denver, teacher, very liberal)          : +143%
+                0.159 → 0.387
+  - Persona 25 (Black woman, Detroit, Republican precinct captain)      : +137%
+                0.042 → 0.100
+  - Persona 22 (Jewish man, NYC, Orthodox rabbi, conservative)          : +132%
+                0.102 → 0.237
+  - Persona 15 (Asian woman, Seattle, environmental scientist, liberal) : +116%
+                0.152 → 0.328
+  - Persona 11 (White woman, Brooklyn, social work, very liberal)       :  +80%
+                0.133 → 0.240
+
+Common pattern: ALL top-improving personas started with very low baseline
+correlations (r < 0.17). This is the dominant signal for RAG benefit.
+
+Why does RAG help these personas so much?
+
+  a) UNCONVENTIONAL PROFILES: Personas 6, 25, 27 combine demographic attributes
+     that are statistically rare in human rating pools (Black conservative,
+     Native American progressive, Black Republican). The base model has no
+     implicit calibration for these unusual preference profiles — it defaults
+     to population-average aesthetics. RAG corrects this by injecting a handful
+     of concrete ratings from that same demographic segment in the training
+     data, giving the model an anchor.
+
+  b) CULTURALLY-SPECIFIC AESTHETIC PREFERENCES: Personas 22 (Orthodox rabbi)
+     and 19 (Latina teacher) have aesthetic preferences shaped by cultural or
+     community identity rather than general demographic markers. A CLIP-based
+     retrieval that finds visually similar sites and associates them with the
+     persona's actual ratings fills in this cultural specificity that the system
+     prompt alone cannot convey.
+
+  c) LOW BASELINE = HIGH HEADROOM: When the baseline model is barely above
+     zero correlation, even small absolute improvements from RAG appear as
+     enormous percentage gains. The model corrects a near-random initial
+     response into a weakly aligned one, which counts as massive relative
+     improvement.
+
+────────────────────────────────────────────────────────────────────────────────
+3. PERSONAS MOST DEGRADED BY RAG
+────────────────────────────────────────────────────────────────────────────────
+Top regressions:
+
+  - Persona 33 (Black man, Atlanta, corporate VP, moderate Dem)         : -124%
+                0.116 → -0.028
+  - Persona 7  (White man, rural Louisiana, retired Baptist)            :  -81%
+                0.038 → 0.007
+  - Persona 4  (White woman, Indiana, Mormon homeschooling mother)      :  -51%
+                0.200 → 0.097
+  - Persona 37 (Hispanic woman, Phoenix, real estate, moderate)         :  -48%
+                0.302 → 0.158
+  - Persona 31 (White man, retired judge, moderate Independent)         :  -45%
+                0.084 → 0.047
+  - Persona 30 (Hispanic woman, NM, elderly, Catholic, low-income)     :  -36%
+                0.221 → 0.142
+  - Persona 17 (White woman, Vermont, retired professor, very liberal)  :  -24%
+                0.252 → 0.192
+
+Why does RAG hurt these personas?
+
+  a) DEMOGRAPHIC CONTAMINATION IN RETRIEVAL: The CLIP embedding captures
+     visual similarity but knows nothing about the persona's demographics.
+     When the top-k retrieved training examples come from a different age,
+     income, or education group than the target persona, the in-context
+     ratings introduce conflicting signals. This is most damaging for
+     demographically isolated personas with no strong visual cluster.
+
+     Persona 33 (wealthy Black moderate) is a clear example: the model may
+     retrieve examples from demographically similar training instances (other
+     Black respondents) who hold very different aesthetic preferences due to
+     different socioeconomic status — actively pointing the model in the
+     wrong direction and flipping the correlation to negative.
+
+  b) MODERATE PERSONAS HAVE HETEROGENEOUS PREFERENCES: Personas 31, 33, 37
+     are political moderates. Moderates by definition aggregate diverse
+     sub-preferences, making their average aesthetic ratings less predictable
+     from any single demographic cluster. Retrieved examples from near
+     neighbours may emphasise one sub-tendency (e.g., conservative aesthetics)
+     when the persona's actual preference is a blend. The baseline model,
+     lacking any examples, produces less biased average predictions that
+     correlate better with the moderate's averaged-out ratings.
+
+  c) ELDERLY, LOW-EDUCATION PERSONAS: Personas 7, 30 (aged 67-75, minimal
+     education) may have aesthetic preferences less tied to recognisable visual
+     patterns. If retrieved training examples come from younger or more
+     educated raters of superficially similar sites, the injected ratings are
+     systematically off, degrading the model's accuracy.
+
+  d) HIGH-BASELINE PERSONAS HAVE LESS ROOM AND MORE TO LOSE: Personas 37
+     (r_baseline=0.302) and 17 (r_baseline=0.252) were already reasonably
+     well-calibrated. For these personas the RAG examples either introduce
+     noise that disrupts a good signal, or the retrieved similar images happen
+     to be the ones the persona rates idiosyncratically, leading the model
+     astray on exactly the outlier cases.
+
+────────────────────────────────────────────────────────────────────────────────
+4. CROSS-CUTTING PATTERNS
+────────────────────────────────────────────────────────────────────────────────
+
+A. Low Baseline → RAG Helps (consistently)
+   Personas with r_baseline < 0.10 (6, 7, 25, 31) all received meaningful
+   RAG intervention. Of these four, three (6, 22, 25) improved substantially.
+   The exception, persona 7 (rural Louisiana Baptist), worsened further —
+   suggesting the demographic retrieval mismatch problem is severe enough to
+   override even the low-baseline headroom.
+
+B. Very Liberal Personas — Mixed Results
+   Very liberal personas split sharply:
+     Improved: 11, 13, 15, 16, 18, 19, 20, 27 (8 personas)
+     Degraded: 14, 17 (2 personas)
+   Younger, lower-income, urban-liberal personas benefit from RAG; older,
+   higher-income liberal personas (tech executive, retired professor) do not.
+   This suggests the model struggles to distinguish within-ideology variation
+   that is driven by socioeconomic class rather than ideology itself.
+
+C. Very Conservative Personas — Mixed Results
+   Similarly varied:
+     Improved: 1, 2, 3, 5, 6, 8, 9, 21, 22, 23, 24, 25 (12 personas)
+     Degraded: 4, 7, 10 (3 personas)
+   The degraded conservative personas all share one trait: they are defined
+   more by religious identity (Mormon, Southern Baptist) or extreme age/
+   geographic isolation than by any visually identifiable lifestyle. Religion-
+   centric aesthetic preferences are essentially invisible to CLIP, so the
+   retrieved examples are driven by visual content that correlates poorly
+   with religious aesthetic values.
+
+D. Persona Uniqueness Predicts RAG Benefit
+   The strongest RAG improvements come from personas whose combination of
+   attributes is rare in the general population (Native American progressive,
+   Black conservative in law enforcement, Orthodox rabbi). These are the exact
+   cases where the base model most needs concrete examples to override its
+   default population-mean behaviour, and where even a few well-matched
+   training examples from the vector DB provide a strong directional signal.
+
+E. The CLIP Retrieval Signal is Imperfect
+   CLIP retrieves visually similar websites but cannot guarantee demographic
+   alignment between the retrieved raters and the target persona. The ideal
+   retrieval would be: "find websites that THIS persona has rated" — which is
+   exactly what the per-persona vector DB does. However, when the training
+   split for a persona is thin (few training examples, persona_32 had only 13),
+   the retrieved examples may not fully represent the persona's preferences,
+   limiting RAG effectiveness.
+

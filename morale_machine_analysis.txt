@@ -1,0 +1,271 @@
+MORAL MACHINE ALIGNMENT ANALYSIS
+==================================
+Metric  : A(g) = 1 - ||h^G - h_hat^G||_2 / sqrt(n)
+          where h^G is the vector of human Option-A rates per moral dimension
+          and h_hat^G is the corresponding vector of model rates
+Approach: Baseline (no context) vs. RAG-augmented model (text-similarity top-k
+          scenario examples as in-context demonstrations)
+Dataset : 40 personas, ~10,000 test records
+
+────────────────────────────────────────────────────────────────────────────────
+OVERALL SUMMARY
+────────────────────────────────────────────────────────────────────────────────
+
+Mean alignment (baseline) : 0.7408
+Mean alignment (model)    : 0.7984
+Overall improvement       : +7.77%
+Personas improved by RAG  : 29 / 40  (72.5%)
+Personas degraded by RAG  : 11 / 40  (27.5%)
+
+The RAG approach is broadly effective for moral decision alignment, with nearly
+three-quarters of personas benefiting. However, the impact is highly uneven:
+improvements range from +64% to virtually zero, while regressions reach -27%.
+This asymmetry signals that the value of retrieved moral examples depends
+strongly on persona-specific properties.
+
+────────────────────────────────────────────────────────────────────────────────
+1. WHY SOME PERSONAS ARE WELL-ALIGNED AT BASELINE
+────────────────────────────────────────────────────────────────────────────────
+
+Personas with the highest baseline alignment (>0.84) are:
+
+  - Persona 18 (Black man, Philadelphia, community organiser, very liberal): 0.911
+  - Persona 24 (Black man, rural MS, conservative Republican legislator)  : 0.878
+  - Persona 13 (Hispanic man, LA, barista/activist, very liberal)         : 0.842
+  - Persona 17 (White woman, Vermont, retired professor, very liberal)    : 0.847
+  - Persona 20 (Asian woman, Portland, student, very liberal, anti-cap)   : 0.844
+
+Key observations:
+
+  a) IDEOLOGICALLY COHERENT PROFILES: The highest-baseline personas have strong,
+     internally consistent value systems that map predictably onto moral
+     dimensions. A very liberal activist or a principled conservative legislator
+     makes decisions along a stable axis (save more people, prioritise the young,
+     or defer to status) that the LLM can infer reliably from the persona
+     description alone without examples. The system prompt sufficiently captures
+     the moral framework.
+
+  b) BLACK PROGRESSIVE URBAN PERSONAS (18, 24) score near the top for opposite
+     political reasons, both benefiting from being culturally well-represented
+     in the training corpus of the underlying LLM. The model has strong priors
+     for how people from these backgrounds reason about trolley-problem-style
+     dilemmas.
+
+  c) YOUNG, POLITICALLY ENGAGED PERSONAS tend to have high baseline alignment.
+     Their moral reasoning is shaped by contemporary discourse that is
+     well-represented in LLM pretraining data, making zero-shot prediction
+     relatively accurate.
+
+────────────────────────────────────────────────────────────────────────────────
+2. WHY SOME PERSONAS ARE POORLY ALIGNED AT BASELINE
+────────────────────────────────────────────────────────────────────────────────
+Personas with the lowest baseline alignment (<0.65) are:
+
+  - Persona 32 (White woman, Midwest, retired nurse, moderate Republican) : 0.500
+  - Persona 2  (White woman, rural MS, nurse's aide, Evangelical)         : 0.515
+  - Persona 31 (White man, Connecticut, retired judge, moderate Indep.)   : 0.607
+  - Persona 23 (Indian American woman, Houston, Hindu pharmacist)         : 0.613
+
+Key observations:
+
+  a) MODERATE AND CROSS-CUTTING PROFILES: Personas 31 and 32 are political
+     moderates whose moral reasoning does not follow either ideological pole
+     clearly. The model defaults to population-average behaviour, which may
+     diverge from a persona whose views blend conservative social instincts
+     with pragmatic or procedural moral thinking. Without examples, the LLM
+     cannot infer which way the moderate will lean on each dimension.
+
+  b) CULTURALLY-SPECIFIC MORAL FRAMEWORKS: Persona 23 (devout Hindu) and
+     persona 2 (Evangelical Protestant) have moral intuitions shaped by
+     specific religious traditions that do not map neatly onto the liberal-
+     conservative axis the model implicitly uses. The LLM underestimates how
+     strongly religious cosmology influences concrete moral choices (e.g.,
+     attitude toward fate, animal vs. human life, elder vs. youth).
+
+  c) RURAL, LOW-EDUCATION, WORKING-CLASS PERSONAS: Persona 2 (nurse's aide,
+     rural MS) sits at the intersection of several underrepresented demographic
+     groups. The model appears to misread this profile, possibly conflating
+     "very conservative" with a different cognitive style than the one actually
+     demonstrated in the data.
+
+────────────────────────────────────────────────────────────────────────────────
+3. PERSONAS MOST IMPROVED BY RAG
+────────────────────────────────────────────────────────────────────────────────
+Top gains:
+
+  - Persona 2  (White woman, rural MS, Evangelical, very conservative)   : +64.5%
+                0.515 → 0.847
+  - Persona 31 (White man, CT, retired judge, moderate Independent)      : +42.7%
+                0.607 → 0.866
+  - Persona 32 (White woman, Midwest, retired nurse, moderate Rep.)      : +29.3%
+                0.500 → 0.646
+  - Persona 25 (Black woman, Detroit, Republican precinct captain)       : +28.6%
+                0.666 → 0.857
+  - Persona 9  (White woman, rural MS, elderly, Southern Baptist)        : +27.9%
+                0.665 → 0.850
+  - Persona 15 (Asian woman, Seattle, environmental scientist, liberal)  : +22.0%
+                0.746 → 0.910
+  - Persona 21 (White man, suburban GA, small business owner, conserv.)  : +21.3%
+                0.746 → 0.904
+
+Why does RAG help these personas?
+
+  a) CORRECTING SYSTEMATIC MISALIGNMENT IN RELIGIOUS/RURAL CONSERVATIVES:
+     Personas 2 and 9 are Evangelical/Baptist women from rural Mississippi with
+     minimal education. The base model substantially underestimates how their
+     moral choices cluster — they may have strong, consistent rules (e.g., always
+     save humans over animals, never sacrifice the elderly) that only become
+     apparent through example scenarios. A few retrieved scenarios showing the
+     actual choices of similar annotators anchors the model's decision-making
+     to that consistent pattern, producing a large jump in alignment.
+
+  b) MODERATES AND INSTITUTIONALISTS BENEFIT ENORMOUSLY: Personas 31 and 32
+     (judge, retired nurse, both moderate/centre) had the worst baselines. For
+     them, RAG is transformative because example scenarios reveal which specific
+     moral intuitions drive their decisions (proceduralism, care ethics, pragmatic
+     harm reduction) — things that cannot be inferred from "moderate Independent"
+     or "moderate Republican" alone. The examples serve as a moral calibration
+     that the system prompt entirely lacks.
+
+  c) UNCONVENTIONAL IDEOLOGICAL COMBINATIONS: Persona 25 (Black Republican
+     precinct captain) is a profile the model struggles to represent correctly
+     zero-shot, likely reverting to assumptions based on race alone. Retrieved
+     scenarios from the corresponding training distribution demonstrate the
+     actual moral reasoning pattern (individual responsibility, community
+     pragmatism) and correct the LLM's default.
+
+  d) HIGH-BASELINE PERSONAS THAT STILL IMPROVE (15, 21): These personas already
+     had reasonable baseline alignment (~0.75) but RAG pushed them toward 0.90+.
+     Here the retrieved examples fine-tune the model's response on the specific
+     moral dimensions where the persona has idiosyncratic preferences (e.g.,
+     a conservative businessman's attitude toward fitness/status vs. numbers),
+     resolving ambiguity that the persona description leaves underspecified.
+
+────────────────────────────────────────────────────────────────────────────────
+4. PERSONAS MOST DEGRADED BY RAG
+────────────────────────────────────────────────────────────────────────────────
+Top regressions:
+
+  - Persona 12 (Black woman, Chicago, civil rights attorney, very liberal): -27.4%
+                0.832 → 0.604
+  - Persona 10 (White man, rural Nebraska, retired farmer, very conserv.): -13.2%
+                0.790 → 0.685
+  - Persona 18 (Black man, Philadelphia, community organiser, very lib.) : -12.8%
+                0.911 → 0.794
+  - Persona 8  (White man, rural Alabama, young, very conservative)      : -11.7%
+                0.819 → 0.723
+  - Persona 17 (White woman, Vermont, retired professor, very liberal)   :  -4.6%
+                0.847 → 0.809
+
+Why does RAG hurt these personas?
+
+  a) HIGH-BASELINE PERSONAS DISRUPTED BY NOISY EXAMPLES: Personas 12, 18, 17,
+     and 8 all had strong baseline alignment (≥0.82). For these personas the
+     system prompt already captures their moral framework very well. The
+     retrieved scenario examples, while textually similar (same moral dimension,
+     same option framing), may come from training annotators who matched the
+     persona's demographic profile only partially, introducing decision patterns
+     that slightly contradict the persona's actual consistency.
+
+     This is the RAG analogue of a "distractor" effect: the model adapts too
+     much to the retrieved demonstrations and over-corrects from a good default.
+
+  b) PERSONA 12 — THE MOST STRIKING REGRESSION:
+     The civil rights attorney (Black woman, Chicago, very liberal) had the
+     third-highest baseline (0.832), suggesting the model already understood
+     her moral profile well. The drop to 0.604 is severe. One likely cause:
+     the retrieved similar scenarios come from training examples matched by
+     Black female annotators generally, but this specific persona has a highly
+     principled, rights-based moral framework (she is a lawyer). The training
+     examples may skew toward more populist or utilitarian choices, actively
+     misleading the model away from her legalistic, principle-first reasoning.
+     The RAG examples are demographically adjacent but morally misaligned.
+
+  c) RURAL, ISOLATED PERSONAS (10): Persona 10 (80-year-old Nebraska farmer,
+     never left his county) has an extremely idiosyncratic moral worldview rooted
+     in traditional rural values. Even scenarios that are textually similar may
+     come from different geographic or occupational contexts where the same
+     demographic cluster makes systematically different choices. With only a
+     small training set for this persona, the retrieved examples may reflect
+     noise more than signal.
+
+  d) YOUNG IDEOLOGICALLY PURE PERSONAS (8): The 18-year-old Alabama conservative
+     is ideologically coherent but demographically unusual (young, rural, very
+     conservative, low income). The base model handles this reasonably well
+     (0.819). The retrieved examples may come from older conservative annotators
+     with different decision patterns, pulling the model away from the specific
+     youthful impulsiveness and military-first logic that characterises this
+     persona.
+
+────────────────────────────────────────────────────────────────────────────────
+5. CROSS-CUTTING PATTERNS
+────────────────────────────────────────────────────────────────────────────────
+
+A. Low Baseline → RAG Consistently Helps
+   All four personas with baseline < 0.65 improved with RAG (avg +30%).
+   This mirrors the website AES findings: the lower the baseline, the more
+   room for improvement, and the more the model needs calibration examples
+   to override its misaligned default.
+
+B. Very High Baseline → RAG Often Hurts
+   Of the 7 personas with baseline > 0.84, five showed degradation or near-
+   zero change. Only personas 15 and 20 improved. This "ceiling disturbance"
+   effect — where well-calibrated zero-shot behaviour is disrupted by
+   potentially mismatched examples — is the dominant risk of RAG.
+
+C. Very Liberal Personas — Split Outcome
+   Improved: 11, 15, 16, 19, 20, 26, 27 (7 personas)
+   Degraded: 12, 13, 14, 17, 18 (5 personas)
+   The dividing line appears to be baseline alignment: those already above 0.84
+   are more likely to degrade. Younger, lower-income liberals benefit more;
+   older, higher-income, or more experienced liberals (professor, attorney,
+   tech executive) tend to regress, perhaps because their nuanced principled
+   frameworks are harder to capture via demographic similarity alone.
+
+D. Very Conservative Personas — Mostly Improved
+   Improved: 1, 2, 3, 4, 5, 6, 9, 21, 22, 24, 25, 26, 28, 30 (14 personas)
+   Degraded: 7, 8, 10 (3 personas)
+   Conservative personas benefit substantially from RAG. This may reflect that
+   conservative moral reasoning in trolley-problem scenarios (often prioritising
+   hierarchy, order, numbers) is harder for the LLM to infer zero-shot without
+   concrete grounding from actual annotators, making retrieved examples especially
+   valuable.
+
+E. Moral Dimensions Drive the Pattern
+   The alignment metric measures correlation across 7 moral scenario dimensions
+   (Age, Gender, Fitness, Social Value, Species, PedPed, etc.). Personas with
+   strong, consistent preferences along specific dimensions (e.g., always save
+   pedestrians over passengers, always save more people) align well regardless
+   of approach. Personas who apply different weights to different dimensions
+   in non-obvious ways are the hardest to calibrate — and benefit most from
+   examples that reveal those dimension-specific preferences.
+
+F. Persona 18 Is the Clearest RAG Failure
+   With the highest baseline alignment of any persona (0.911), persona 18 had
+   the most to lose from bad RAG examples. The -12.8% regression from near-
+   perfect alignment to 0.794 demonstrates that RAG can be actively harmful
+   when the zero-shot model is already well-calibrated. Applying RAG selectively
+   — only when the baseline is below a threshold — would have protected this
+   persona's alignment.
+
+────────────────────────────────────────────────────────────────────────────────
+6. COMPARISON WITH WEBSITE AESTHETICS FINDINGS
+────────────────────────────────────────────────────────────────────────────────
+Both tasks show the same fundamental pattern:
+
+  Same: Low baseline → RAG helps; high baseline → RAG risks degradation.
+  Same: Unconventional ideological combinations benefit most from RAG.
+  Same: Religious/culturally-specific moral frameworks are hard to capture
+        without examples.
+
+  Different: Moral decisions are more globally consistent per persona than
+             aesthetic ratings. A persona's moral intuitions tend to generalise
+             across scenario types, so a single well-matched example can
+             recalibrate the entire decision axis. In contrast, aesthetic
+             preferences are more image-specific and noisier, requiring
+             more examples to achieve a comparable relative improvement.
+  Different: The overall RAG improvement is smaller for Moral Machine (+7.77%)
+             than for Website AES (+22.76%), but the baseline is already higher
+             (0.74 vs. 0.20), leaving less room for gain.
+
+

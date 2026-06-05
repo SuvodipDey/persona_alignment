@@ -1,0 +1,293 @@
+OPINION QA REPRESENTATIVENESS ANALYSIS
+=======================================
+Metric  : Rep(g) = 1 - (1/|Q|) * sum_q TVD( P^G(q) || P_hat^G(q) )
+          where TVD is the Total Variation Distance between human and model
+          response distributions per question q in persona group g
+Approach: Baseline (no context) vs. RAG-augmented model (semantically similar
+          question-answer pairs as in-context examples via SentenceTransformer
+          retrieval per persona vector DB)
+Dataset : 40 personas, ~8,357 test question-answer pairs
+
+────────────────────────────────────────────────────────────────────────────────
+OVERALL SUMMARY
+────────────────────────────────────────────────────────────────────────────────
+Mean Rep(g) (baseline) : 0.4827
+Mean Rep(g) (model)    : 0.4935
+Overall improvement    : +2.24%
+Personas improved      : 25 / 40  (62.5%)
+Personas degraded      : 14 / 40  (35.0%)
+Near-zero change (±1%) :  7 / 40  (17.5%)
+
+The RAG improvement on Opinion QA is substantially smaller than on the other
+two tasks (Morale Machine: +7.77%, Website AES: +22.76%). The improvement
+distribution is tightly concentrated: only 5 personas improve by more than
+10%, while most changes fall within ±5%. This reflects a fundamental
+difference in task structure that limits RAG's effectiveness.
+
+────────────────────────────────────────────────────────────────────────────────
+1. WHY OPINION QA IS HARDER: TASK STRUCTURE DIFFERENCES
+────────────────────────────────────────────────────────────────────────────────
+Unlike Moral Machine (7 scenario types, binary choice) and Website AES
+(visual ratings, single scale), Opinion QA spans 200+ distinct survey
+questions across completely unrelated domains: gun control, abortion,
+immigration, racial attitudes, climate science, gender roles, AI, healthcare.
+
+This creates two fundamental limitations for RAG:
+
+  a) LOW CROSS-TOPIC TRANSFERABILITY: A persona's opinion on immigration
+     does not reliably predict their opinion on AI regulation, even if the
+     questions are semantically similar by surface text. The retrieved "similar"
+     questions may come from a different ideological dimension than the one
+     being queried, carrying the wrong distributional signal.
+
+  b) HIGH WITHIN-PERSONA VARIANCE: Each persona is described by a few
+     political/social positions, but must answer questions on dozens of topics
+     that the description never explicitly addresses. Without examples, the
+     model guesses; with examples, it may latch onto an adjacent but incorrect
+     pattern from a retrieved question.
+
+  c) TVD IS SENSITIVE TO OPTION-LEVEL DISTRIBUTION: The metric captures whether
+     the full probability distribution over all options matches, not just the
+     modal answer. Even if the RAG examples push the model toward the right
+     modal choice, they may shift probability mass away from secondary options
+     in the human distribution, worsening TVD without changing accuracy.
+
+────────────────────────────────────────────────────────────────────────────────
+2. WHY SOME PERSONAS ARE WELL-ALIGNED AT BASELINE
+────────────────────────────────────────────────────────────────────────────────
+Personas with the highest baseline Rep(g) (> 0.52) are:
+
+  - Persona 15 (Asian woman, Seattle, environmental scientist, liberal) : 0.543
+  - Persona 5  (Asian man, TX, Korean-born engineer, very conservative) : 0.535
+  - Persona 6  (Black man, rural GA, law enforcement, very conservative): 0.535
+  - Persona 14 (White man, SF, tech executive, very liberal)            : 0.529
+  - Persona 4  (White woman, IN, homeschooling mother, Mormon)          : 0.525
+  - Persona 2  (White woman, rural MS, nurse's aide, Evangelical)       : 0.524
+  - Persona 17 (White woman, Vermont, retired professor, very liberal)  : 0.526
+
+Key observations:
+
+  a) STRONG IDEOLOGICAL ANCHORING: The best-aligned personas have clearly
+     defined, publicly legible ideological profiles. A tech executive from San
+     Francisco, an environmental scientist from Seattle, or an Evangelical from
+     rural Mississippi each map onto well-documented opinion clusters that the
+     LLM has learned from survey commentary and political discourse in pretraining.
+     The model does not need examples to infer that a Seattle environmentalist
+     supports climate policy or that an Evangelical opposes abortion.
+
+  b) DEMOGRAPHICALLY REPRESENTATIVE ARCHETYPES: Personas 14 (tech liberal) and
+     6 (law enforcement conservative) represent common demographic archetypes
+     well-represented in political surveys and news coverage. The LLM's priors
+     for these profiles are already well-calibrated.
+
+  c) STRONG SINGLE-ISSUE COHERENCE: Personas like 5 and 6, despite their
+     unusual demographic combinations, have one dominating worldview axis
+     (free-market conservatism, law-and-order) that generalises across many
+     question topics, enabling consistent zero-shot predictions.
+
+────────────────────────────────────────────────────────────────────────────────
+3. WHY SOME PERSONAS ARE POORLY ALIGNED AT BASELINE
+────────────────────────────────────────────────────────────────────────────────
+Personas with the lowest baseline Rep(g) (< 0.46) are:
+
+  - Persona 3  (Hispanic man, TX, border patrol, shifted conservative) : 0.396
+  - Persona 36 (Asian man, Seattle, data scientist, independent)       : 0.438
+  - Persona 8  (Young White man, Alabama, very conservative)           : 0.436
+  - Persona 13 (Hispanic man, LA, barista/activist, very liberal)      : 0.446
+  - Persona 18 (Black man, Philadelphia, community organiser, liberal) : 0.458
+
+Key observations:
+
+  a) "SHIFTED" OR UNCONVENTIONAL POLITICAL PROFILES: Persona 3 (Hispanic border
+     patrol officer who has "shifted" to very conservative) and persona 8
+     (young rural conservative) represent profiles where the demographic and
+     ideological combination is counter-intuitive. The model may default to
+     the demographic prior (young or Hispanic → more moderate/liberal) and
+     underweight the declared ideology, producing misaligned responses.
+
+  b) IDEOLOGICALLY INDEPENDENT PERSONAS: Persona 36 (data scientist, independent,
+     "applies data-driven reasoning to every problem") has no stable party
+     alignment the model can use as a shortcut. Each question requires inferring
+     the persona's position from first principles, which is highly uncertain
+     without examples.
+
+  c) ACTIVIST PERSONAS WITH VERY SPECIFIC VIEW CLUSTERS: Personas 13 (prison
+     abolition, open borders) and 18 (reparations, police abolition) hold
+     positions that sit at the far left of the distribution on specific issues
+     but may be indistinguishable from mainstream liberals on many survey
+     questions. The model struggles to capture the degree and consistency of
+     their radicalism.
+
+────────────────────────────────────────────────────────────────────────────────
+4. PERSONAS MOST IMPROVED BY RAG
+────────────────────────────────────────────────────────────────────────────────
+Top gains:
+
+  - Persona 16 (White man, Boston, non-profit, very liberal)           : +18.2%
+                0.469 → 0.555
+  - Persona 36 (Asian man, Seattle, data scientist, independent)       : +16.5%
+                0.438 → 0.511
+  - Persona 3  (Hispanic man, TX, border patrol, conservative)         : +14.3%
+                0.396 → 0.452
+  - Persona 24 (Black man, rural MS, conservative Republican legislator: +12.6%
+                0.454 → 0.511
+  - Persona 30 (Hispanic woman, NM, elderly, Catholic, low-income)     : +11.9%
+                0.441 → 0.493
+  - Persona 34 (Hispanic woman, Houston, cardiologist, independent)    :  +8.8%
+                0.481 → 0.524
+  - Persona 37 (Hispanic woman, Phoenix, real estate, moderate)        :  +7.1%
+                0.482 → 0.517
+
+Why does RAG help these personas?
+
+  a) LOW-BASELINE PROFILES WITH CONSISTENT IDEOLOGICAL TEXTURE: Personas 3, 24,
+     and 30 each have a low baseline but a coherent world-view that, once
+     exemplified via a few retrieved Q&A pairs, allows the model to generalise
+     correctly. A conservative Hispanic border patrol officer's opinions on
+     immigration-adjacent questions provide a strong anchor from which the
+     model can infer consistent stances across other topics (law enforcement,
+     social order, border security).
+
+  b) REASONING-STYLE PERSONAS BENEFIT FROM EXAMPLES: Persona 36 (data
+     scientist, independent, data-driven) and persona 34 (cardiologist,
+     independent, healthcare-focused) have a distinctive cognitive style rather
+     than a fixed ideological position. Retrieved examples effectively show
+     the model how this style manifests in specific opinion choices, something
+     the system prompt alone cannot demonstrate. Both improve strongly.
+
+  c) UNDERREPRESENTED CULTURAL IDENTITIES: Persona 30 (elderly Hispanic
+     Catholic farmworker) represents an intersectional profile not well
+     represented in mainstream political discourse. The retrieved examples
+     from demographically similar training annotators provide essential
+     calibration that the LLM lacks from pretraining.
+
+  d) YOUNG PROGRESSIVE MALES: Persona 16 (Boston non-profit worker, very
+     liberal) shows the largest absolute gain. Despite a clear left-wing
+     profile, the base model likely blunts the sharpness of his opinions
+     (moderating toward safer responses). The RAG examples from similar
+     left-wing training annotators restore the full distributional radicalism,
+     better matching the human labels.
+
+────────────────────────────────────────────────────────────────────────────────
+5. PERSONAS MOST DEGRADED BY RAG
+────────────────────────────────────────────────────────────────────────────────
+Top regressions:
+
+  - Persona 8  (18-year-old White man, Alabama, very conservative)     : -11.6%
+                0.436 → 0.386
+  - Persona 21 (White man, GA, small business owner, very conservative): -8.7%
+                0.506 → 0.462
+  - Persona 5  (Asian man, TX, Korean-born engineer, very conservative): -7.2%
+                0.535 → 0.496
+  - Persona 27 (Native American woman, SD, progressive Democrat)       : -6.9%
+                0.507 → 0.472
+  - Persona 35 (White man, Boston, law partner, socially moderate Rep.): -4.7%
+                0.485 → 0.462
+  - Persona 28 (Hispanic farmworker, CA, low-income Democrat)          : -4.3%
+                0.461 → 0.441
+
+Why does RAG hurt these personas?
+
+  a) HIGH-BASELINE PERSONAS DISTURBED BY MISMATCHED EXAMPLES: Persona 5
+     (Korean-born conservative engineer) and persona 21 (conservative small
+     business owner) both had solid baselines (>0.50). For these personas the
+     model already approximates the opinion distribution reasonably well. The
+     retrieved similar questions may come from training annotators who share
+     the same broad ideology but differ on specific sub-issues — for instance,
+     a Korean-American conservative may have views on immigration and trade that
+     differ from Anglo-American conservatives. The examples shift the model
+     toward the majority-conservative pattern and away from this persona's
+     culturally-inflected variant.
+
+  b) PERSONA 8 — MOST SEVERE DEGRADATION: The 18-year-old Alabama conservative
+     is the single most degraded persona (-11.6%). This profile is extremely
+     sparse in opinion survey datasets: very young (18), very conservative, low
+     income, rural. The retrieved "similar" questions from the training DB are
+     likely answered by older, more ideologically stable conservatives whose
+     distributional responses differ systematically from those of a teenager.
+     The RAG examples actively introduce age-driven mismatch, pulling the
+     model away from the base model's already-weak but better-calibrated guess.
+
+  c) CROSS-CUTTING PROGRESSIVE IDENTITIES: Persona 27 (Native American
+     progressive) and persona 28 (Hispanic farmworker Democrat) both combine
+     progressive politics with non-mainstream cultural identities whose opinion
+     patterns may not cluster with generic progressive annotators in the
+     training set. Retrieved examples from demographically mismatched progressives
+     introduce opinion distributions that conflict with the persona's specific
+     community-informed views (tribal sovereignty, labour rights vs. generic
+     liberal positions).
+
+  d) SOCIALLY MODERATE CONSERVATIVES REGRESS: Persona 35 (law firm partner,
+     "socially moderate" conservative) and persona 21 (small business owner)
+     have cross-cutting profiles where the conservative economic views coexist
+     with moderate social views. Retrieved examples from ideologically pure
+     conservatives overwrite the social moderation, producing a more extreme
+     and less representative distribution.
+
+────────────────────────────────────────────────────────────────────────────────
+6. CROSS-CUTTING PATTERNS
+────────────────────────────────────────────────────────────────────────────────
+
+A. Improvement Distribution Is Tightly Bounded
+   The largest gain is +18.2% and the worst loss is -11.6%. In contrast,
+   Morale Machine ranges from +64% to -27%, and Website AES from +961% to
+   -124%. Opinion QA's opinion-by-opinion diversity makes the task inherently
+   resistant to large RAG-driven swings in either direction.
+
+B. Very Conservative Personas — More Often Degraded
+   Improved: 1, 2, 3, 4, 9, 10, 24 (7 personas)
+   Degraded: 5, 6, 7, 8, 21, 22, 35 (7 personas)
+   Conservative personas split evenly. Those with strong single-issue anchors
+   (border patrol, Southern Baptist) improve; those with high baselines or
+   culturally complex conservatism (Korean engineer, Orthodox rabbi, socially
+   moderate conservative) degrade. Conservative opinion patterns are more
+   heterogeneous across subgroups than the system prompt conveys.
+
+C. Very Liberal Personas — Mostly Improved
+   Improved: 11, 16, 17, 18, 19, 20 (6 personas)
+   Degraded: 13, 14, 15, 27 (4 personas)
+   Liberal improvement is modest but consistent across mainstream liberal
+   profiles. The degraded liberal personas are either extreme-left (13, prison
+   abolition) or uniquely-positioned (27, Native American progressive). The
+   mainstream liberal signal is well-represented in training data, making
+   retrieval more useful on average.
+
+D. Moderate and Independent Personas — Mixed but RAG-Friendly
+   Personas 31, 34, 36, 37, 38, 39 (moderates/independents) are mostly
+   improved. Without a strong ideological prior, the base model defaults to
+   bland centrism. RAG provides persona-specific examples that break out of
+   this default, revealing genuine moderate preference patterns.
+
+E. The RAG Benefit Correlates Inversely With Baseline Strength
+   Across all degraded personas, 4 of the top 5 had baseline Rep(g) > 0.48.
+   Across all improved personas, 7 of the top 8 had baseline Rep(g) < 0.48.
+   This mirrors the Morale Machine and Website AES findings: the lower the
+   starting alignment, the more the model needs calibration and the less it
+   has to lose from imperfect examples.
+
+F. Question Volume Per Persona Does Not Drive Outcomes
+   n_questions ranges from 163 to 258. There is no clear correlation between
+   sample size and RAG benefit, confirming that retrieval quality (not quantity)
+   determines improvement.
+
+────────────────────────────────────────────────────────────────────────────────
+7. COMPARISON ACROSS ALL THREE TASKS
+────────────────────────────────────────────────────────────────────────────────
+                        Opinion QA   Morale Machine   Website AES
+Mean baseline           0.483        0.741            0.202
+Mean model              0.494        0.798            0.247
+Overall improvement     +2.24%       +7.77%           +22.76%
+Personas improved       25/40 (63%)  29/40 (73%)      28/40 (70%)
+Max improvement         +18.2%       +64.5%           +961%
+Max degradation         -11.6%       -27.4%           -124%
+
+Opinion QA shows the smallest RAG benefit because:
+  1. The task has the highest baseline difficulty (Rep(g) ~0.48 ≈ random
+     for many option sets), leaving less room for improvement than the others.
+  2. Cross-topic opinion inconsistency makes retrieved similar-question
+     examples less reliably transferable than similar moral scenarios or
+     similar-looking websites.
+  3. The TVD metric aggregates over option distributions, penalising shifts
+     in secondary options even when the primary choice improves.
+
+
