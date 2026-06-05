@@ -270,24 +270,5 @@ F. Question Volume Per Persona Does Not Drive Outcomes
    sample size and RAG benefit, confirming that retrieval quality (not quantity)
    determines improvement.
 
-────────────────────────────────────────────────────────────────────────────────
-7. COMPARISON ACROSS ALL THREE TASKS
-────────────────────────────────────────────────────────────────────────────────
-                        Opinion QA   Morale Machine   Website AES
-Mean baseline           0.483        0.741            0.202
-Mean model              0.494        0.798            0.247
-Overall improvement     +2.24%       +7.77%           +22.76%
-Personas improved       25/40 (63%)  29/40 (73%)      28/40 (70%)
-Max improvement         +18.2%       +64.5%           +961%
-Max degradation         -11.6%       -27.4%           -124%
-
-Opinion QA shows the smallest RAG benefit because:
-  1. The task has the highest baseline difficulty (Rep(g) ~0.48 ≈ random
-     for many option sets), leaving less room for improvement than the others.
-  2. Cross-topic opinion inconsistency makes retrieved similar-question
-     examples less reliably transferable than similar moral scenarios or
-     similar-looking websites.
-  3. The TVD metric aggregates over option distributions, penalising shifts
-     in secondary options even when the primary choice improves.
 
 
